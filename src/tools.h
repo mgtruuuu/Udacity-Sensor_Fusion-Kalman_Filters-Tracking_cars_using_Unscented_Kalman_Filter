@@ -48,6 +48,7 @@ public:
 	lmarker lidarSense(Car& car, pcl::visualization::PCLVisualizer::Ptr& viewer, long long timestamp, bool visualize);
 	rmarker radarSense(Car& car, Car ego, pcl::visualization::PCLVisualizer::Ptr& viewer, long long timestamp, bool visualize);
 	void ukfResults(Car car, pcl::visualization::PCLVisualizer::Ptr& viewer, double time, int steps);
+
 	/**
 	* A helper method to calculate RMSE.
 	*/

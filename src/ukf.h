@@ -22,10 +22,7 @@ public:
 	virtual ~UKF();
 
 
-	/**
-	 * InitializeUKF initializes the UKF instance
-	 */
-	void InitializeUKF(MeasurementPackage meas_package);
+
 
 	/**
 	 * ProcessMeasurement
