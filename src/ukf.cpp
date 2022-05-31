@@ -298,41 +298,44 @@ void UKF::UpdateLidar(MeasurementPackage meas_package) {
     */
 
 
-    // STEP 4 : case a) Predict Measurements;??????? calculate Kalman gain
+    // STEP 4 : case a) Predict LiDAR Measurements.
 
-	const VectorXd z(meas_package.raw_measurements_);
-	const int n_z{ static_cast<int>(z.size())};	// Measurement z is a 2x1 vector for lidar
+	const VectorXd z(meas_package.raw_measurements_);	// 2x1 vector for lidar
+	const int n_z{ static_cast<int>(z.size())};
 
-	// Measurement matrix
-	MatrixXd H{ n_z, n_x_ };
+	// measurement matrix : projection from a 5D state to a 2D observation state
+	MatrixXd H(n_z, n_x_);
 	H << 1, 0, 0, 0, 0,
          0, 1, 0, 0, 0;
 
-	// Measurement covariance matrix
-	MatrixXd R{ n_z, n_z };
+	// Create measurement noise covariance.
+	MatrixXd R(n_z, n_z);
 	R << std_laspx_ * std_laspx_, 0,
 		 0, std_laspy_* std_laspy_;
 
-	VectorXd z_pred(n_z);
-	z_pred = x_.head(n_z); // Extract the px, py values from the state
+	// Create predicted measurement mean.
+	VectorXd z_pred{ x_.head(n_z) };	// Extract px, py values from the state.
+	
 
-	const VectorXd y{ z - z_pred };  // Calculate the residuals vector y
+
+
+
+
+
+
+	// STEP 5) Update the state by applying the Kalman gain to the residual
+
+	// Update state mean and covariance.
+	const VectorXd residuals{ z - z_pred };		// residuals
 	const MatrixXd H_t{ H.transpose() };
 	const MatrixXd S{ H * P_ * H_t + R };
 	const MatrixXd K{ P_ * H_t * S.inverse() };
+	x_ += (K * residuals);
+	P_ = (MatrixXd::Identity(n_x_, n_x_) - K * H) * P_;
 
-	// STEP 5) Update the state, by applying the Kalman gain to the residual
-	// cout << "Updating the state by applying the Kalman gain to the residual" << endl; 
-
-	MatrixXd I{ MatrixXd::Identity(n_x_, n_x_) };
-
-	// Update the mean and covariance matrix
-	x_ += (K * y);
-	P_ = (I - K * H) * P_;
-
-	// Calculate normalized innovation squared (NIS) for tuning
-	// double NIS = y.transpose() * Sinv * y;
-	// cout << "Lidar NIS (2-df X^2, 95% < 5.991) = " << NIS << endl; 
+	//// Calculate normalized innovation squared (NIS) for tuning
+	//const double NIS{ y.transpose() * S.inverse() * y};
+	//cout << "Lidar NIS (2-df X^2, 95% < 5.991) = " << NIS << endl; 
 }
 
 void UKF::UpdateRadar(MeasurementPackage meas_package) {
@@ -345,43 +348,46 @@ void UKF::UpdateRadar(MeasurementPackage meas_package) {
 	*/
 
 
-	// STEP 4 : case b) Predict the measurement mean (z_pred) and innovation covariance (S)
+	// STEP 4 : case b) Predict RaDAR Measurements.
 
 	const VectorXd z{ meas_package.raw_measurements_ };	// 3x1 vector for radar
 	const int n_z{ static_cast<int>(z.size()) };			
 
-	// Create matrix for sigma points in measurement space.
+	// Create matrix in measurement space to make measurement sigma points.
 	MatrixXd Zsig(n_z, n_sig_);
 
-	// mean predicted measurement
+	// Create predicted measurement mean.
 	VectorXd z_pred(n_z);
 	
-	// measurement covariance matrix S
+	// Create predicted measurement covariance.
 	MatrixXd S(n_z, n_z);
 
 
-	// Transform sigma points into measurement space.
+	// Transform sigma points into measurement space : predictedSP -> measurementSP
 	for (int i{ 0 }; i < n_sig_; ++i) {
+
 		const double p_x{ Xsig_pred_(0, i) };
 		const double p_y{ Xsig_pred_(1, i) };
-		const double v{ Xsig_pred_(2, i) };
+		const double v{ Xsig_pred_(2, i) };	
 		const double yaw{ Xsig_pred_(3, i) };
 
 		const double v1{ cos(yaw) * v };
 		const double v2{ sin(yaw) * v };
 
-		// measurement model
+		// Apply measurement model.
 		Zsig(0, i) = sqrt(p_x * p_x + p_y * p_y);		// r
 		Zsig(1, i) = atan2(p_y, p_x);					// phi
 		Zsig(2, i) = (Zsig(0, i) > 0.001) ? (p_x * v1 + p_y * v2) / sqrt(p_x * p_x + p_y * p_y) : 0;	// r_dot
 	}
 
-	// mean predicted measurement
+
+	// Calculate predicted measurement mean.
 	z_pred.fill(0.0);
 	for (int i{ 0 }; i < n_sig_; ++i)
 		z_pred += weights_(i) * Zsig.col(i);
 
-	// innovation covariance matrix S
+
+	// Calculate predicted measurement covariance.
 	S.fill(0.0);
 	for (int i{ 0 }; i < n_sig_; ++i) {
 		VectorXd z_diff{ Zsig.col(i) - z_pred };	// residual
@@ -389,13 +395,11 @@ void UKF::UpdateRadar(MeasurementPackage meas_package) {
 
 		S += weights_(i) * z_diff * z_diff.transpose();
 	}
-
-	// Add measurement noise covariance matrix.
-	MatrixXd R(n_z, n_z);
+	MatrixXd R(n_z, n_z);	// Create measurement noise covariance.
 	R << std_radr_ * std_radr_, 0, 0,
 		0, std_radphi_* std_radphi_, 0,
 		0, 0, std_radrd_* std_radrd_;
-	S += R;
+	S += R;					// Add measurement noise covariance.
 
 
 
@@ -403,32 +407,30 @@ void UKF::UpdateRadar(MeasurementPackage meas_package) {
 	// STEP 5 : Update the state by applying the Kalman gain to the residual.
 
 
-	// Create matrix for cross correlation Tc.
+	// Create matrix Tc for Cross-correlation 
+	// between sigma points in state space and measurement space.
 	MatrixXd Tc(n_x_, n_z);
 	Tc.fill(0.0);
-
 	for (int i{ 0 }; i < n_sig_; ++i) {
 		VectorXd z_diff{ Zsig.col(i) - z_pred };	// residual
-		z_diff(1) = mod_2Pi_MPi2Pi(z_diff(1));
+		z_diff(1) = mod_2Pi_MPi2Pi(z_diff(1));		// angle normalization
 
 		VectorXd x_diff{ Xsig_pred_.col(i) - x_ };
-		x_diff(3) = mod_2Pi_MPi2Pi(x_diff(3));
+		x_diff(3) = mod_2Pi_MPi2Pi(x_diff(3));		// angle normalization
 
 		Tc += weights_(i) * x_diff * z_diff.transpose();
 	}
 
-
-	
-	// Update the mean and covariance matrix.
-	MatrixXd K{ Tc * S.inverse() };			// Kalman gain K
-	VectorXd residuals{ z - z_pred };		// residual
-	residuals(1) = mod_2Pi_MPi2Pi(residuals(1));
-	x_ += K * residuals;
-	P_ -= K * S * K.transpose();
+	// Update state mean and covariance.
+	const MatrixXd K{ Tc * S.inverse() };			// Kalman gain K
+	VectorXd residuals{ z - z_pred };				// residual
+	residuals(1) = mod_2Pi_MPi2Pi(residuals(1));	// angle normalization
+	x_ += K * residuals;					
+	P_ -= K * S * K.transpose();			
 
 
 
-	// Calculate normalized innovation squared (NIS) for tuning
-	// double NIS = residuals.transpose() * Sinv * residuals;
-	// cout << "Radar NIS (3-df X^2, 95% < 7.815) = " << NIS << endl;
+	//// Calculate normalized innovation squared (NIS) for tuning
+	//const double NIS{ residuals.transpose() * S.inverse() * residuals };
+	//cout << "Radar NIS (3-df X^2, 95% < 7.815) = " << NIS << endl;
 }
