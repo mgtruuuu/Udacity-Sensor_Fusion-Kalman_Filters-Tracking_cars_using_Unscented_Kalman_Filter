@@ -385,7 +385,7 @@ void UKF::UpdateLidar(MeasurementPackage meas_package) {
 
 	// Calculate normalized innovation squared (NIS) for tuning
 	const double lidarNIS{ residuals.transpose() * S.inverse() * residuals };
-	cout << "\tLidar NIS ( ~ X^2 : P(e<5.991) = 0.95 for 2DF ) : " << lidarNIS << endl;
+	//cout << "\tLidar NIS ( ~ X^2 : P(e<5.991) = 0.95 for 2DF ) : " << lidarNIS << endl;
 	lidarNISs.push_back(lidarNIS);
 }
 
@@ -482,6 +482,6 @@ void UKF::UpdateRadar(MeasurementPackage meas_package) {
 
 	// Calculate normalized innovation squared (NIS) for tuning
 	const double radarNIS{ residuals.transpose() * S.inverse() * residuals };
-	cout << "Radar NIS ( ~ X^2 : P(e<7.815) = 0.95 for 3DF ) : " << radarNIS << endl;
+	//cout << "Radar NIS ( ~ X^2 : P(e<7.815) = 0.95 for 3DF ) : " << radarNIS << endl;
 	radarNISs.push_back(radarNIS);
 }
