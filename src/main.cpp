@@ -6,7 +6,8 @@
 #include "highway.h"
 
 
-
+std::vector<double> lidarNISs{};
+std::vector<double> radarNISs{};
 
 
 int main(int argc, char** argv) {

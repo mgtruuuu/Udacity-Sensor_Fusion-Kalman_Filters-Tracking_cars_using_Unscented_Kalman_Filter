@@ -4,11 +4,15 @@
 //#include <Eigen/Dense>
 
 #include <iostream>
+#include <vector>
 
 using Eigen::MatrixXd;
 using Eigen::VectorXd;
 using std::cout;
 using std::endl;
+
+extern std::vector<double> lidarNISs;
+extern std::vector<double> radarNISs;
 
 
 
@@ -380,8 +384,9 @@ void UKF::UpdateLidar(MeasurementPackage meas_package) {
 
 
 	//// Calculate normalized innovation squared (NIS) for tuning
-	//const double NIS{ y.transpose() * S.inverse() * y};
-	//cout << "Lidar NIS (2-df X^2, 95% < 5.991) = " << NIS << endl; 
+	const double lidarNIS{ residuals.transpose() * S.inverse() * residuals };
+	cout << "\tLidar NIS ( ~ X^2 : P(e<5.991) = 0.95 for 2DF ) : " << lidarNIS << endl;
+	lidarNISs.push_back(lidarNIS);
 }
 
 void UKF::UpdateRadar(MeasurementPackage meas_package) {
@@ -475,7 +480,8 @@ void UKF::UpdateRadar(MeasurementPackage meas_package) {
 
 
 
-	//// Calculate normalized innovation squared (NIS) for tuning
-	//const double NIS{ residuals.transpose() * S.inverse() * residuals };
-	//cout << "Radar NIS (3-df X^2, 95% < 7.815) = " << NIS << endl;
+	// Calculate normalized innovation squared (NIS) for tuning
+	const double radarNIS{ residuals.transpose() * S.inverse() * residuals };
+	cout << "Radar NIS ( ~ X^2 : P(e<7.815) = 0.95 for 3DF ) : " << radarNIS << endl;
+	radarNISs.push_back(radarNIS);
 }
