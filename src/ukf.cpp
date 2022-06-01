@@ -13,7 +13,7 @@ using std::endl;
 
 
 
-// Given a yaw angle (psi) in rad, returns the mod value in the range (-pi, pi].
+// Given a yaw (angle) in rad, returns the mod value in the range (-pi, pi].
 double mod_2Pi_MPi2Pi(double angle) {
 
 	// Find x such that angle = x (mod 2 * Pi ) and -Pi < x <= +Pi.
@@ -282,8 +282,6 @@ void UKF::ProcessMeasurement(MeasurementPackage meas_package) {
 		UpdateLidar(meas_package);
 	else if (MeasurementPackage::SensorType::RADAR == meas_package.sensor_type_)
 		UpdateRadar(meas_package);
-	//else
-	//	assert(false, "Neither LASER NOR RADAR");
 
 }
 
@@ -303,18 +301,42 @@ void UKF::UpdateLidar(MeasurementPackage meas_package) {
 	const VectorXd z(meas_package.raw_measurements_);	// 2x1 vector for lidar
 	const int n_z{ static_cast<int>(z.size())};
 
-	// measurement matrix : projection from a 5D state to a 2D observation state
-	MatrixXd H(n_z, n_x_);
-	H << 1, 0, 0, 0, 0,
-         0, 1, 0, 0, 0;
+	////// measurement matrix : projection from a 5D state to a 2D observation state
+	////MatrixXd H(n_z, n_x_);
+	////H << 1, 0, 0, 0, 0,
+	////        0, 1, 0, 0, 0;
+	////// Create measurement noise covariance.
+	////MatrixXd R(n_z, n_z);
+	////R << std_laspx_ * std_laspx_, 0,
+	////	 0, std_laspy_* std_laspy_;
+	////// Create predicted measurement mean.
+	////VectorXd z_pred{ x_.head(n_z) };	// Extract px, py values from the state.
 
-	// Create measurement noise covariance.
-	MatrixXd R(n_z, n_z);
-	R << std_laspx_ * std_laspx_, 0,
-		 0, std_laspy_* std_laspy_;
+
+	// Create matrix in measurement space to make measurement sigma points.
+	MatrixXd Zsig(n_z, n_sig_);
+	Zsig = Xsig_pred_.topLeftCorner(n_z, n_sig_);
 
 	// Create predicted measurement mean.
-	VectorXd z_pred{ x_.head(n_z) };	// Extract px, py values from the state.
+	VectorXd z_pred(n_z);
+	z_pred.fill(0.0);
+	for (int i{ 0 }; i < n_sig_; ++i)
+		z_pred += weights_(i) * Zsig.col(i);
+
+	// Create predicted measurement covariance.
+	MatrixXd S(n_z, n_z);
+	S.fill(0.0);
+	for (int i{ 0 }; i < n_sig_; ++i) {
+		VectorXd z_diff{ Zsig.col(i) - z_pred };	// residual
+		z_diff(1) = mod_2Pi_MPi2Pi(z_diff(1));		// angle normalization
+
+		S += weights_(i) * z_diff * z_diff.transpose();
+	}
+	MatrixXd R(n_z, n_z);	// Create measurement noise covariance.
+	R << std_laspx_ * std_laspx_, 0,
+		0, std_laspy_* std_laspy_;
+	S += R;					// Add measurement noise covariance.
+	
 	
 
 
@@ -325,13 +347,37 @@ void UKF::UpdateLidar(MeasurementPackage meas_package) {
 
 	// STEP 5) Update the state by applying the Kalman gain to the residual
 
+	////// Update state mean and covariance.
+	////const VectorXd residuals{ z - z_pred };		// residuals
+	////const MatrixXd H_t{ H.transpose() };
+	////const MatrixXd S{ H * P_ * H_t + R };
+	////const MatrixXd K{ P_ * H_t * S.inverse() };
+	////x_ += (K * residuals);
+	////P_ = (MatrixXd::Identity(n_x_, n_x_) - K * H) * P_;
+
+
+	// Create matrix Tc for Cross-correlation 
+	// between sigma points in state space and measurement space.
+	MatrixXd Tc(n_x_, n_z);
+	Tc.fill(0.0);
+	for (int i{ 0 }; i < n_sig_; ++i) {
+		VectorXd z_diff{ Zsig.col(i) - z_pred };	// residual
+		z_diff(1) = mod_2Pi_MPi2Pi(z_diff(1));		// angle normalization
+
+		VectorXd x_diff{ Xsig_pred_.col(i) - x_ };
+		x_diff(3) = mod_2Pi_MPi2Pi(x_diff(3));		// angle normalization
+
+		Tc += weights_(i) * x_diff * z_diff.transpose();
+	}
+
 	// Update state mean and covariance.
-	const VectorXd residuals{ z - z_pred };		// residuals
-	const MatrixXd H_t{ H.transpose() };
-	const MatrixXd S{ H * P_ * H_t + R };
-	const MatrixXd K{ P_ * H_t * S.inverse() };
-	x_ += (K * residuals);
-	P_ = (MatrixXd::Identity(n_x_, n_x_) - K * H) * P_;
+	const MatrixXd K{ Tc * S.inverse() };			// Kalman gain K
+	VectorXd residuals{ z - z_pred };				// residual
+	residuals(1) = mod_2Pi_MPi2Pi(residuals(1));	// angle normalization
+	x_ += K * residuals;
+	P_ -= K * S * K.transpose();
+
+
 
 	//// Calculate normalized innovation squared (NIS) for tuning
 	//const double NIS{ y.transpose() * S.inverse() * y};
@@ -370,7 +416,6 @@ void UKF::UpdateRadar(MeasurementPackage meas_package) {
 		const double p_y{ Xsig_pred_(1, i) };
 		const double v{ Xsig_pred_(2, i) };	
 		const double yaw{ Xsig_pred_(3, i) };
-
 		const double v1{ cos(yaw) * v };
 		const double v2{ sin(yaw) * v };
 
