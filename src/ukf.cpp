@@ -53,13 +53,13 @@ UKF::UKF() {
 	//
 	//// Process noise standard deviation longitudinal acceleration in m/s^2
 	//
-	constexpr double max_acceleration{ 6.0 };
+	constexpr double max_acceleration{ 5.0 };
 	std_a_ = max_acceleration / 2;
 
 	//
 	//// Process noise standard deviation yaw acceleration in rad/s^2
 	//
-	std_yawdd_ = 0.6;
+	std_yawdd_ = 5.0;
 
 
 
@@ -383,7 +383,7 @@ void UKF::UpdateLidar(MeasurementPackage meas_package) {
 
 
 
-	//// Calculate normalized innovation squared (NIS) for tuning
+	// Calculate normalized innovation squared (NIS) for tuning
 	const double lidarNIS{ residuals.transpose() * S.inverse() * residuals };
 	cout << "\tLidar NIS ( ~ X^2 : P(e<5.991) = 0.95 for 2DF ) : " << lidarNIS << endl;
 	lidarNISs.push_back(lidarNIS);

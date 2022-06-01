@@ -6,8 +6,8 @@
 #include "highway.h"
 
 
-std::vector<double> lidarNISs{};
-std::vector<double> radarNISs{};
+std::vector<double> lidarNISs{};	// to check the distribution of NIS
+std::vector<double> radarNISs{};	// to check the distribution of NIS
 
 
 int main(int argc, char** argv) {
@@ -41,6 +41,17 @@ int main(int argc, char** argv) {
 		++frame_count;
 		time_us = 1000000 * frame_count / frame_per_sec; 
 	}
+
+	
+	// Exclude first 6 NIS values for all cars(3).
+	int num_overLidarNIS = std::count_if(lidarNISs.begin() + 6 * 3, lidarNISs.end(), [](double e) {e > 5.991; });
+		
+	// Exclude first 6 NIS values for all cars(3).
+	int num_overRadarNIS = std::count_if(radarNISs.begin() + 6 * 3, radarNISs.end(), [](double e) {e > 7.815; });
+
+	std::cout << "The ratio of [# LiDAR NIS] over limit : " << num_overLidarNIS / lidarNISs.size();
+	std::cout << "The ratio of [# RaDAR NIS] over limit : " << num_overRadarNIS / radarNISs.size();
+
 
 
 
