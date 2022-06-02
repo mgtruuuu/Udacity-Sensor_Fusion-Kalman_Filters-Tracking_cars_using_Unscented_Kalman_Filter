@@ -49,8 +49,8 @@ int main(int argc, char** argv) {
 	// Exclude first 6 NIS values for all cars(3).
 	int num_overRadarNIS = std::count_if(radarNISs.begin() + (6 * 3), radarNISs.end(), [](double e) { return e > 7.815; });
 
-	std::cout << "The ratio of [# LiDAR NIS] over limit : " << static_cast<double>(num_overLidarNIS) / (lidarNISs.size() - (6 * 3));
-	std::cout << "The ratio of [# RaDAR NIS] over limit : " << static_cast<double>(num_overRadarNIS) / (radarNISs.size() - (6 * 3));
+	std::cout << "The ratio of [# LiDAR NIS] over limit : " << static_cast<double>(num_overLidarNIS) / (lidarNISs.size() - (6 * 3)) << std::endl;
+	std::cout << "The ratio of [# RaDAR NIS] over limit : " << static_cast<double>(num_overRadarNIS) / (radarNISs.size() - (6 * 3)) << std::endl;
 
 
 
