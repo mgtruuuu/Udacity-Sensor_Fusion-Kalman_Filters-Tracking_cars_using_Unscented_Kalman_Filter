@@ -293,7 +293,6 @@ NOTE : As of now this project has an error when running the .exe file on Windows
 
 
 
-
 ## 4. Basic Build Instructions
 
 1. Clone this repo.
