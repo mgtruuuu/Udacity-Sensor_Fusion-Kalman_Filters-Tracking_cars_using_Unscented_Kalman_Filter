@@ -66,7 +66,7 @@ void UKF::Prediction(double delta_t) {
 	x_aug.head(n_x_) = x_;				// Augment the mean state.
 	x_aug(5) = 0;
 	x_aug(6) = 0;
-
+    
 	// Create augmented state covariance.
 	MatrixXd P_aug(n_aug_, n_aug_);
 	P_aug.fill(0.0);
@@ -290,6 +290,7 @@ NOTE : As of now this project has an error when running the .exe file on Windows
     - Mac: same deal as make - [install Xcode command line tools](https://developer.apple.com/xcode/features/)
 
     - Windows: recommend using [MinGW](http://www.mingw.org/)
+
 
 
 
